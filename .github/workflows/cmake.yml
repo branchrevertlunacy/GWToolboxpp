@@ -1,8 +1,8 @@
 name: CMake
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
+  #schedule:
+   # - cron: "*/10 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -195,47 +195,6 @@ jobs:
       with:
         path: ${{runner.workspace}}/GWToolboxpp/bin/RelWithDebInfo/
 
-    - name: Generate app token to access private plugins
-      id: private-plugins-app-token
-      continue-on-error: true
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ vars.PRIVATE_PLUGINS_CLIENT_ID }}
-        private-key: ${{ secrets.PRIVATE_PLUGINS_KEY }}
-        owner: gwtasdevs
-        repositories: DialogsPlugins
-
-    - name: Download private plugin assets
-      id: private-plugins-download
-      shell: bash
-      env:
-        GH_TOKEN: ${{ steps.private-plugins-app-token.outputs.token }}
-        IS_DEV_BUILD: ${{ needs.check.outputs.run == 'dev' }}
-      run: |
-        if [ "$IS_DEV_BUILD" = "true" ]; then
-          TAG=$(gh api repos/gwtasdevs/DialogsPlugins/releases --jq '.[0].tag_name')
-        else
-          TAG=""
-        fi
-
-        mkdir -p ./output-artifacts
-        gh release download $TAG --repo gwtasdevs/DialogsPlugins --pattern "*.dll" --pattern "*.sigstore.json" --dir ./output-artifacts
-
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@v4.1.1
-
-    - name: Attest private plugins
-      shell: bash
-      run: |
-        for file in ./output-artifacts/*.dll; do
-          cosign verify-blob \
-            --bundle "${file}.sigstore.json" \
-            --certificate-identity-regexp "https://github.com/gwtasdevs/DialogsPlugins" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "$file"
-        done
-        rm -rf ./output-artifacts/*.sigstore.json
-
     - name: Check version and create release
       shell: bash
       env:
@@ -305,14 +264,14 @@ jobs:
         # Create release
         if [ -n "$DEV_COMMIT_SHORT" ]; then
           gh release create "$TAG_NAME" \
-            --repo gwtasdevs/GWToolboxpp \
+            --repo branchrevertlunacy/GWToolboxpp \
             --title "$TAG_NAME" \
             --notes "[$DEV_COMMIT_SHORT](https://github.com/gwdevhub/GWToolboxpp/commit/$DEV_COMMIT_SHORT)" \
             --prerelease \
             ./output-artifacts/*
         else
           gh release create "$TAG_NAME" \
-            --repo gwtasdevs/GWToolboxpp \
+            --repo branchrevertlunacy/GWToolboxpp \
             --title "$TAG_NAME" \
             --notes "$RELEASE_NOTES" \
             ./output-artifacts/*
